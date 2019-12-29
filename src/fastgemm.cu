@@ -34,17 +34,32 @@ void ref_mmul(float * C, float * A, float * B, int M, int N, int K)
     }
 }
 
-// __global__ void fastgemm()
-// {
-//   kernel();
-// }
-
-void launchFastGemm()
+__device__ __forceinline__ void outer_prod(float* C, float* shared_A, float* B, int id, int stride)
 {
-  int numBlocks;
+  // TODO Put C in register
+  #pragma unroll
+  for (int i = 0; i < M; i++)
+    C[] += shared_A[] * B[];
+}
+
+__global__ void fastgemm(float4* C, float4* A, float4* B, int M, int N, int K)
+{
+  // INCORPERATE SHARED MEM IN L1 LOOP LATER
+  extern __shared__ float4 shared_mem[];
+  int id = threadIdx.x;
+  int stride = blockDim.x;
+  for (int i = id; i < M; i+=stride)
+    shared_mem[i] = A[i];
+
+  outer_prod(C, shared_mem, B, id, stride);
+}
+
+void launchFastGemm(float4* C, float4* A, float4* B, int M, int N, int K)
+{
+  int numBlocks  = 1;
   int numThreads = 128;
-  int sharedSize = 0;
-  //fastgemm<<<numBlocks, numThreads, sharedSize>>>();
+  int sharedSize = 49152; // Max size per block => M = 3072 floats
+  fastgemm<<<numBlocks, numThreads, sharedSize>>>(C,A,B,M,N,K);
   cudaDeviceSynchronize();
 }
 
