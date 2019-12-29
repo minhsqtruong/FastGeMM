@@ -15,6 +15,21 @@ A High Performance General Matrix Matrix Multiplication on the Jetson TX2
 | 12/24/2020 | Misc Setup                                |
 
 Total Time budget of Project is 46 days.
+
+### Device Architecture
+* Total Global Memory (bytes): 8366784512
+* Shared Memory per Block (bytes): 49152
+* L1 Cache Size (bytes): 16000
+* L2 Cache Size (bytes): 4194304
+* Cache Line Size (bytes): 128
+* Registers per Block: 65536
+* Warp Size: 32
+* Number of Warp Schedulers: 4
+* Max Threads per Block: 1024
+* Compute Capability: 7
+* Clock Rate (kHz): 1620000
+* Number of SM: 36
+
 ### Members
 * Teja Aluru
 * Daniel Loran
