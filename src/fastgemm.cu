@@ -34,32 +34,57 @@ void ref_mmul(float * C, float * A, float * B, int M, int N, int K)
     }
 }
 
-__device__ __forceinline__ void outer_prod(float* C, float* shared_A, float* B, int id, int stride)
+__device__ __forceinline__ int conflict_free_index(int local_id, int real_idx)
 {
-  // TODO Put C in register
-  #pragma unroll
-  for (int i = 0; i < M; i++)
-    C[] += shared_A[] * B[];
+  return real_idx * 128 + local_id;
 }
 
-__global__ void fastgemm(float4* C, float4* A, float4* B, int M, int N, int K)
+
+__device__ __forceinline__ void outer_prod(float* C, float* A, float4* B, int id, int stride)
 {
-  // INCORPERATE SHARED MEM IN L1 LOOP LATER
-  extern __shared__ float4 shared_mem[];
+  float4 b = B[id];
+
+  #pragma unroll
+  for (int i = 0; i < 24; i++) {
+    C[conflict_free_index(id, i*4 + 0)] += A[i] * b.x;
+    C[conflict_free_index(id, i*4 + 1)] += A[i] * b.y;
+    C[conflict_free_index(id, i*4 + 2)] += A[i] * b.z;
+    C[conflict_free_index(id, i*4 + 3)] += A[i] * b.w;
+  }
+}
+
+__global__ void fastgemm(float4* C, float4* A, float4* B)
+{ // Assuming K = 1 for now
+
+  // Memory Instantiation
+  extern __shared__ float sharedMem[];
+  float registers[24];
+
+  // Identification
   int id = threadIdx.x;
   int stride = blockDim.x;
-  for (int i = id; i < M; i+=stride)
-    shared_mem[i] = A[i];
 
-  outer_prod(C, shared_mem, B, id, stride);
+  // Load (Incorperate into L1 later)
+  for (int i = id; i < 49152; i+=stride)
+    sharedMem[i] = 0.0;
+  #pragma unroll
+  for (int i = 0; i < 6; i+= 1) {
+    float4 num = A[i];
+    registers[i*4 + 0] = num.x;
+    registers[i*4 + 1] = num.y;
+    registers[i*4 + 2] = num.z;
+    registers[i*4 + 3] = num.w;
+  }
+
+  outer_prod(sharedMem, registers, B, id, stride);
 }
 
 void launchFastGemm(float4* C, float4* A, float4* B, int M, int N, int K)
 {
   int numBlocks  = 1;
   int numThreads = 128;
-  int sharedSize = 49152; // Max size per block => M = 3072 floats
-  fastgemm<<<numBlocks, numThreads, sharedSize>>>(C,A,B,M,N,K);
+  int sharedSize = 49152; // Max size per block
+  fastgemm<<<numBlocks, numThreads, sharedSize>>>(C,A,B);
   cudaDeviceSynchronize();
 }
 
