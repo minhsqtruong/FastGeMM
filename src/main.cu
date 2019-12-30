@@ -27,6 +27,9 @@ int main(int argc, char const *argv[]) {
 
   // 1) Run reference code <DEBUG means run dumb CPU, REAL means CUBLAS>
   #ifdef DEBUG
+
+  cout << "(M,N,K) = " << M << " " << N << " " << K << endl;
+
   float* C = (float*) malloc(sizeof(float) * M * N);
   float* A = (float*) malloc(sizeof(float) * M * K);
   float* B = (float*) malloc(sizeof(float) * K * N);
@@ -46,11 +49,37 @@ int main(int argc, char const *argv[]) {
   printMatrix(B,K,N);
   cout << "Reference C: " << endl;
   printMatrix(C,M,N);
+
+  // 2) Pack Data for Kernel <THIS CHANGE AS THE CODE PROGRESSES>
+  cout << "Start initializing device arrays" << endl;
+  float4* C_gpu;
+  float4* A_gpu;
+  float4* B_gpu;
+  cout << cudaMallocManaged(&C_gpu, sizeof(float4) * (M * N)/4) << endl;;
+  cudaMallocManaged(&A_gpu, sizeof(float4) * (M * K)/4);
+  cudaMallocManaged(&B_gpu, sizeof(float4) * (K * N)/4);
+
+  cout << "Start loading device arrays" << endl;
+  for (int i = 0; i < (M * K)/4; i++)
+    A_gpu[i] = make_float4(A[i*4 + 0],A[i*4 + 1],A[i*4 + 2],A[i*4 + 3]);
+  for (int i = 0; i < (K * N)/4; i++)
+    B_gpu[i] = make_float4(B[i*4 + 0],B[i*4 + 1],B[i*4 + 2],B[i*4 + 3]);
+
+  cout << "Start fastgemm" << endl;
+  launchFastGemm(C_gpu, A_gpu, B_gpu, M, N, K);
+
+  free(A);
+  free(B);
+  free(C);
+  cudaFree(A_gpu);
+  cudaFree(B_gpu);
+  cudaFree(C_gpu);
   #endif
 
   #ifdef REAL
   // INSERT CUBLAS HERE
   #endif
+
   return 0;
 }
 

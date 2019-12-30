@@ -4,9 +4,16 @@ void printMatrix(float* mat, int row, int col)
 {
   for (int i = 0; i < row; i++) {
     for (int j = 0; j < col; j++) {
-      printf("%6.1lf ", mat[i*col + j]);
+      if (j < 10)
+        printf("%6.1lf ", mat[i*col + j]);
+      else {
+        printf(" ...");
+        break;
+      }
     }
     printf("\n");
+    if(i > 10)
+      break;
   }
 }
 
@@ -46,10 +53,10 @@ __device__ __forceinline__ void outer_prod(float* C, float* A, float4* B, int id
 
   #pragma unroll
   for (int i = 0; i < 24; i++) {
-    C[conflict_free_index(id, i*4 + 0)] += A[i] * b.x;
-    C[conflict_free_index(id, i*4 + 1)] += A[i] * b.y;
-    C[conflict_free_index(id, i*4 + 2)] += A[i] * b.z;
-    C[conflict_free_index(id, i*4 + 3)] += A[i] * b.w;
+    fmaf(C[conflict_free_index(id, i*4 + 0)],A[i], b.x);
+    fmaf(C[conflict_free_index(id, i*4 + 1)],A[i], b.y);
+    fmaf(C[conflict_free_index(id, i*4 + 2)],A[i], b.z);
+    fmaf(C[conflict_free_index(id, i*4 + 3)],A[i], b.w);
   }
 }
 
@@ -65,7 +72,7 @@ __global__ void fastgemm(float4* C, float4* A, float4* B)
   int stride = blockDim.x;
 
   // Load (Incorperate into L1 later)
-  for (int i = id; i < 49152; i+=stride)
+  for (int i = id; i < 12288; i+=stride)
     sharedMem[i] = 0.0;
   #pragma unroll
   for (int i = 0; i < 6; i+= 1) {
