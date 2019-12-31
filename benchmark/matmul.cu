@@ -1,5 +1,17 @@
 #include <cstdlib>
 #include <cublas_v2.h>
+#include <iostream>
+
+/*Proof of concept, makes two matricies A and B that are 3x3 square matricies with values
+1,2,3;
+4,5,6;
+7,8,9;
+
+Resulting product will print, should be 
+30,36,42;
+66,81,96;
+102,126,150;
+*/
 
 void gpu_blas_mmul(const float *A, const float *B, float *C, const int m, const int k, const int n) {
     int lda=m,ldb=k,ldc=m;
@@ -32,7 +44,7 @@ void print_matrix(const float *A, int nr_rows_A, int nr_cols_A) {
 int main(){
 
     int nr_rows_A, nr_cols_A, nr_rows_B, nr_cols_B, nr_rows_C, nr_cols_C;
-    nr_rows_A = nr_cols_A = nr_rows_B = nr_cols_B = nr_rows_C = nr_rows_c = 3;
+    nr_rows_A = nr_cols_A = nr_rows_B = nr_cols_B = nr_rows_C = nr_cols_C = 3;
 
     float *h_A = (float *)malloc(nr_rows_A * nr_cols_A * sizeof(float));
     float *h_B = (float *)malloc(nr_rows_B * nr_cols_B * sizeof(float));
@@ -40,8 +52,12 @@ int main(){
 
     for(int i = 0; i<nr_rows_A; i++){
         for(int j = 0; j<nr_cols_A; j++){
-            h_A[i][j] = (i*nr_rows_A) + (j+1);
-            h_B[i][j] = (i*nr_rows_A) + (j+1);
+            h_A[(j*nr_rows_A) + (i)] = (i*nr_rows_A) + (j+1);
+            // std::cout << h_A[(i*nr_rows_A) + (j+1)] << " ";
+            // if(j == nr_cols_A-1){
+            //     std::cout << std::endl;
+            // }
+            h_B[(j*nr_rows_B) + (i)] = (i*nr_rows_A) + (j+1);
         }
     }
 
@@ -52,6 +68,14 @@ int main(){
 
     cudaMemcpy(d_A,h_A,nr_rows_A * nr_cols_A * sizeof(float),cudaMemcpyHostToDevice);
     cudaMemcpy(d_B,h_B,nr_rows_B * nr_cols_B * sizeof(float),cudaMemcpyHostToDevice);
+
+
+    // Multiply A and B on GPU
+    gpu_blas_mmul(d_A, d_B, d_C, nr_rows_A, nr_cols_A, nr_cols_B);
+    // Copy (and print) the result on host memory
+    cudaMemcpy(h_C,d_C,nr_rows_C * nr_cols_C * sizeof(float),cudaMemcpyDeviceToHost);
+    std::cout << "C =" << std::endl;
+    print_matrix(h_C, nr_rows_C, nr_cols_C);
 
     cudaFree(d_A);
     cudaFree(d_B);
