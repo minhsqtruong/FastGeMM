@@ -2,10 +2,6 @@
 using namespace std;
 int main(int argc, char const *argv[]) {
 
-  int M = atoi(argv[1]);
-  int N = atoi(argv[2]);
-  int K = atoi(argv[3]);
-
   #ifdef DEBUG
   struct cudaDeviceProp prop;
   int device = 0;
@@ -28,49 +24,48 @@ int main(int argc, char const *argv[]) {
   // 1) Run reference code <DEBUG means run dumb CPU, REAL means CUBLAS>
   #ifdef DEBUG
 
-  cout << "(M,N,K) = " << M << " " << N << " " << K << endl;
-
-  float* C = (float*) malloc(sizeof(float) * M * N);
-  float* A = (float*) malloc(sizeof(float) * M * K);
-  float* B = (float*) malloc(sizeof(float) * K * N);
-
-  for (int i = 0; i < M * N; i++)
-    C[i] = 0.0;
-  for (int i = 0; i < M * K; i++)
-    A[i] = (float) i;
-  for (int i = 0; i < M * N; i++)
-    B[i] = (float) i;
-
-  ref_mmul(C, A, B, M, N, K);
-
-  cout << "Reference A: " << endl;
-  printMatrix(A,M,K);
-  cout << "Reference B: " << endl;
-  printMatrix(B,K,N);
-  cout << "Reference C: " << endl;
-  printMatrix(C,M,N);
+  // cout << "(M,N,K) = " << M << " " << N << " " << K << endl;
+  //
+  // float* C = (float*) malloc(sizeof(float) * M * N);
+  // float* A = (float*) malloc(sizeof(float) * M * K);
+  // float* B = (float*) malloc(sizeof(float) * K * N);
+  //
+  // for (int i = 0; i < M * N; i++)
+  //   C[i] = 0.0;
+  // for (int i = 0; i < M * K; i++)
+  //   A[i] = (float) i;
+  // for (int i = 0; i < M * N; i++)
+  //   B[i] = (float) i;
+  //
+  // ref_mmul(C, A, B);
+  //
+  // cout << "Reference A: " << endl;
+  // printMatrix(A,M,K);
+  // cout << "Reference B: " << endl;
+  // printMatrix(B,K,N);
+  // cout << "Reference C: " << endl;
+  // printMatrix(C,M,N);
 
   // 2) Pack Data for Kernel <THIS CHANGE AS THE CODE PROGRESSES>
   cout << "Start initializing device arrays" << endl;
   float4* C_gpu;
   float4* A_gpu;
   float4* B_gpu;
-  cout << cudaMallocManaged(&C_gpu, sizeof(float4) * (M * N)/4) << endl;;
+  cudaMallocManaged(&C_gpu, sizeof(float4) * (M * N)/4);
   cudaMallocManaged(&A_gpu, sizeof(float4) * (M * K)/4);
   cudaMallocManaged(&B_gpu, sizeof(float4) * (K * N)/4);
 
   cout << "Start loading device arrays" << endl;
   for (int i = 0; i < (M * K)/4; i++)
-    A_gpu[i] = make_float4(A[i*4 + 0],A[i*4 + 1],A[i*4 + 2],A[i*4 + 3]);
+    A_gpu[i] = make_float4(i*4.0 + 0.0, i*4.0 + 1.0, i*4.0 + 2.0,i*4.0 + 3.0);
   for (int i = 0; i < (K * N)/4; i++)
-    B_gpu[i] = make_float4(B[i*4 + 0],B[i*4 + 1],B[i*4 + 2],B[i*4 + 3]);
+    B_gpu[i] = make_float4(i*4.0 + 0.0, i*4.0 + 1.0, i*4.0 + 2.0,i*4.0 + 3.0);
 
   cout << "Start fastgemm" << endl;
-  launchFastGemm(C_gpu, A_gpu, B_gpu, M, N, K);
-
-  free(A);
-  free(B);
-  free(C);
+  launchFastGemm(C_gpu, A_gpu, B_gpu);
+  // free(A);
+  // free(B);
+  // free(C);
   cudaFree(A_gpu);
   cudaFree(B_gpu);
   cudaFree(C_gpu);
