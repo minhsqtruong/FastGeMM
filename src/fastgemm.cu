@@ -65,7 +65,11 @@ __global__ void fastgemm(float4* C, float4* A, float4* B)
 
   // Memory Instantiation
   extern __shared__ float sharedMem[];
-  float registers[M];
+  float registers_0[M];
+  float registers_1[M];
+  float* this_registers;
+  float* next_registers;
+  float* tmp;
   float4* A_vec;
   float4* B_vec;
 
@@ -77,19 +81,37 @@ __global__ void fastgemm(float4* C, float4* A, float4* B)
   for (int i = id; i < MAX_SHARED_SIZE_FLOAT4; i+=stride)
     sharedMem[i] = 0.0;
 
-  for (int k = 0; k < K; k++) {
-    // Load A (Use Preload technique later)
+  // Preload Setup
+  for (int m = 0; m < MBY4; m+= 1) {
+    float4 num = A[m];
+    registers_0[m*4 + 0] = num.x;
+    registers_0[m*4 + 1] = num.y;
+    registers_0[m*4 + 2] = num.z;
+    registers_0[m*4 + 3] = num.w;
+  }
+  next_registers = registers_0;
+  this_registers = registers_1;
+
+  for (int k = 1; k < K; k++) {
+
+    // Ping pong for preload
+    tmp = this_registers;
+    this_registers = next_registers;
+    next_registers = tmp;
+    A_vec = A + k*MBY4;
+
+    // Preload the next set of A_vec in
     #pragma unroll
     for (int m = 0; m < MBY4; m+= 1) {
-      A_vec = A + k*MBY4;
-      B_vec = B + k*NBY4;
       float4 num = A_vec[m];
-      registers[m*4 + 0] = num.x;
-      registers[m*4 + 1] = num.y;
-      registers[m*4 + 2] = num.z;
-      registers[m*4 + 3] = num.w;
+      next_registers[m*4 + 0] = num.x;
+      next_registers[m*4 + 1] = num.y;
+      next_registers[m*4 + 2] = num.z;
+      next_registers[m*4 + 3] = num.w;
     }
-    outer_prod(sharedMem, registers, B_vec, id, stride);
+
+    B_vec = B + (k-1)*NBY4;
+    outer_prod(sharedMem, this_registers, B_vec, id, stride);
   }
 }
 
