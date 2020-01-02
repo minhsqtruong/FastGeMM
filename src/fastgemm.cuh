@@ -9,7 +9,7 @@
 
 #define M 24
 #define N 512
-#define K 1
+#define K 5 
 #define MBY4 6
 #define NBY4 128
 #define MAX_SHARED_SIZE_BYTES  49152

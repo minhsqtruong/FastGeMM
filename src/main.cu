@@ -23,7 +23,7 @@ int main(int argc, char const *argv[]) {
 
   // 1) Run reference code <DEBUG means run dumb CPU, REAL means CUBLAS>
   #ifdef DEBUG
-
+  // 
   // cout << "(M,N,K) = " << M << " " << N << " " << K << endl;
   //
   // float* C = (float*) malloc(sizeof(float) * M * N);
@@ -64,7 +64,8 @@ int main(int argc, char const *argv[]) {
   cout << "Start fastgemm" << endl;
   launchFastGemm(C_gpu, A_gpu, B_gpu);
 
-  printMatrix(C_gpu, M, N);
+  printMatrix(C_gpu,M,N);
+
   // free(A);
   // free(B);
   // free(C);

@@ -54,10 +54,10 @@ __device__ __forceinline__ void outer_prod(float* C, float* A, float4* B, int id
 
   #pragma unroll
   for (int m = 0; m < M; m++) {
-    fmaf(C[conflict_free_index(id, m*4 + 0)],A[m], b.x);
-    fmaf(C[conflict_free_index(id, m*4 + 1)],A[m], b.y);
-    fmaf(C[conflict_free_index(id, m*4 + 2)],A[m], b.z);
-    fmaf(C[conflict_free_index(id, m*4 + 3)],A[m], b.w);
+    C[conflict_free_index(id, m*4 + 0)] = fmaf(A[m], b.x, C[conflict_free_index(id, m*4 + 0)]);
+    C[conflict_free_index(id, m*4 + 1)] = fmaf(A[m], b.y, C[conflict_free_index(id, m*4 + 1)]);
+    C[conflict_free_index(id, m*4 + 2)] = fmaf(A[m], b.z, C[conflict_free_index(id, m*4 + 2)]);
+    C[conflict_free_index(id, m*4 + 3)] = fmaf(A[m], b.w, C[conflict_free_index(id, m*4 + 3)]);
   }
 }
 
@@ -94,7 +94,6 @@ __global__ void fastgemm(float* C, float4* A, float4* B)
   this_registers = registers_1;
 
   for (int k = 1; k < K; k++) {
-
     // Ping pong for preload
     tmp = this_registers;
     this_registers = next_registers;
@@ -110,12 +109,13 @@ __global__ void fastgemm(float* C, float4* A, float4* B)
       next_registers[m*4 + 2] = num.z;
       next_registers[m*4 + 3] = num.w;
     }
-
     B_vec = B + (k-1)*NBY4;
     outer_prod(sharedMem, this_registers, B_vec, id, stride);
   }
 
   // Need to turn C into float4 later
+  if (id == 0)
+    printf("Store C back\n");
   for (int i = id; i < MAX_SHARED_SIZE_FLOAT; i+=stride)
     C[i] = sharedMem[i];
 }
