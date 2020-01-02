@@ -48,10 +48,10 @@ int main(int argc, char const *argv[]) {
 
   // 2) Pack Data for Kernel <THIS CHANGE AS THE CODE PROGRESSES>
   cout << "Start initializing device arrays" << endl;
-  float4* C_gpu;
+  float * C_gpu;
   float4* A_gpu;
   float4* B_gpu;
-  cudaMallocManaged(&C_gpu, sizeof(float4) * (M * N)/4);
+  cudaMallocManaged(&C_gpu, sizeof(float) * (M * N));
   cudaMallocManaged(&A_gpu, sizeof(float4) * (M * K)/4);
   cudaMallocManaged(&B_gpu, sizeof(float4) * (K * N)/4);
 
@@ -63,6 +63,8 @@ int main(int argc, char const *argv[]) {
 
   cout << "Start fastgemm" << endl;
   launchFastGemm(C_gpu, A_gpu, B_gpu);
+
+  printMatrix(C_gpu, M, N);
   // free(A);
   // free(B);
   // free(C);

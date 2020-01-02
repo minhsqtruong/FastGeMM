@@ -41,6 +41,7 @@ void ref_mmul(float * C, float * A, float * B)
     }
 }
 
+// Have to look into if this is neccessary
 __device__ __forceinline__ int conflict_free_index(int local_id, int real_idx)
 {
   return real_idx * NUM_THREADS + local_id;
@@ -60,7 +61,7 @@ __device__ __forceinline__ void outer_prod(float* C, float* A, float4* B, int id
   }
 }
 
-__global__ void fastgemm(float4* C, float4* A, float4* B)
+__global__ void fastgemm(float* C, float4* A, float4* B)
 { // Assuming K = 1 for now
 
   // Memory Instantiation
@@ -78,7 +79,7 @@ __global__ void fastgemm(float4* C, float4* A, float4* B)
   int stride = blockDim.x;
 
   // Load C (Incorperate into L1 later)
-  for (int i = id; i < MAX_SHARED_SIZE_FLOAT4; i+=stride)
+  for (int i = id; i < MAX_SHARED_SIZE_FLOAT; i+=stride)
     sharedMem[i] = 0.0;
 
   // Preload Setup
@@ -113,9 +114,13 @@ __global__ void fastgemm(float4* C, float4* A, float4* B)
     B_vec = B + (k-1)*NBY4;
     outer_prod(sharedMem, this_registers, B_vec, id, stride);
   }
+
+  // Need to turn C into float4 later
+  for (int i = id; i < MAX_SHARED_SIZE_FLOAT; i+=stride)
+    C[i] = sharedMem[i];
 }
 
-void launchFastGemm(float4* C, float4* A, float4* B)
+void launchFastGemm(float* C, float4* A, float4* B)
 {
   fastgemm<<<NUM_BLOCKS, NUM_THREADS, MAX_SHARED_SIZE_BYTES>>>(C,A,B);
   cudaDeviceSynchronize();
